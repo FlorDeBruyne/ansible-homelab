@@ -1,0 +1,11 @@
+# Negeer tijdelijke bestanden en venv
+.venv/
+*.pyc
+__pycache__/
+
+# Negeer SSH keys (voor de zekerheid)
+*.pem
+id_rsa
+
+# Negeer Ansible retry files
+*.retry
