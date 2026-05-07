@@ -10,8 +10,13 @@ workers:
     hpprodesk02:
       ansible_host: 192.168.100.129
     hpprodesk03:
-      ansible_host: 192.168.100.135
+      ansible_host: 192.168.100.130
     hpprodesk04:
-      ansible_host: 192.168.100.151
+      ansible_host: 192.168.100.131
   vars:
     ansible_user: flor
+
+cluster:
+  children:
+    controllers:
+    workers:
