@@ -1,0 +1,10 @@
+---
+- name: Allow tailscale0 on port 6443 from anywhere
+  community.general.ufw:
+    rule: allow
+    interface: tailscale0
+    direction: in
+    port: '6443'
+    proto: tcp
+    comment: Tailscale needs acces to port 6443
+  become: true
