@@ -27,10 +27,10 @@
   community.general.modprobe:
     name: '{{ item }}'
     state: present
-  become: true
   loop:
     - br_netfilter
     - overlay
+    become: true
 
 - name: Configuring kernel modules
   ansible.posix.sysctl:
