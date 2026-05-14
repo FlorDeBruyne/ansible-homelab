@@ -2,5 +2,6 @@
 - hosts: cluster
   roles:
     - common
+    - tailscale
     - containerd
     - kubernetes
