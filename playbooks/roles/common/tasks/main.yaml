@@ -17,5 +17,3 @@
     regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
     replace: '#\1\2\3swap\4'
     backup: yes
-  when: ansible_facts["swaptotal_mb"] > 0
-
