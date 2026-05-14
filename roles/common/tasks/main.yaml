@@ -2,6 +2,13 @@
   ansible.builtin.apt:
     update_cache: true
     upgrade: safe
+  become: true
+
+- name: Install neofetch
+  ansible.builtin.apt:
+    name: neofetch
+    state: present
+  become: true
 
 - name: Disable swap for current session
   command: swapoff -a
@@ -14,20 +21,41 @@
     regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
     replace: '#\1\2\3swap\4'
     backup: yes
+  become: true
 
-- name: Kernel module for k8s networking
+- name: Kernel module for k8s networking & container storage
   community.general.modprobe:
-    name: br_netfilter
+    name: '{{ item }}'
     state: present
+  become: true
+  loop:
+    - br_netfilter
+    - overlay
 
-- name: Kernel module for container storage drivers
-  community.general.modprobe:
-    name: overlay
+- name: Configuring kernel modules
+  ansible.posix.sysctl:
+    name: '{{ item }}'
     state: present
+    reload: true
+    value: '1'
+  loop:
+    - net.ipv4.ip_forward
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+  become: true
+
+- name: Configure module load.d to make it persistent for kubernetes
+  ansible.builtin.copy:
+    content: |
+      overlay
+      br_netfilter
+    dest: /etc/modules-load.d/k8s.conf
+  become: true
 
 - name: Enable ufw
   community.general.ufw:
     state: enabled
+  become: true
 
 - name: Allow tcp for ports from anywhere
   community.general.ufw:
@@ -43,14 +71,3 @@
     - 10257
     - 10259
     - 30007
-
-- name: Allow tailscale0 on port 6443 from anywhere
-  community.general.ufw:
-    rule: allow
-    interface: tailscale0
-    direction: in
-    port: '6443'
-    proto: tcp
-    comment: Tailscale needs acces to port 6443
-  become: true
-
