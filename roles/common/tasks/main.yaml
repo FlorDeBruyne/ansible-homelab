@@ -1,0 +1,56 @@
+- name: Update & upgrade packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: safe
+
+- name: Disable swap for current session
+  command: swapoff -a
+  become: true
+  when: ansible_facts["swaptotal_mb"] > 0
+
+- name: Disable swap permanently, persist reboots
+  replace:
+    path: /etc/fstab
+    regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
+    replace: '#\1\2\3swap\4'
+    backup: yes
+
+- name: Kernel module for k8s networking
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Kernel module for container storage drivers
+  community.general.modprobe:
+    name: overlay
+    state: present
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+
+- name: Allow tcp for ports from anywhere
+  community.general.ufw:
+    rule: allow
+    port: '{{ item }}'
+    proto: tcp
+  become: true
+  loop:
+    - 22
+    - 6443
+    - 2379:2380
+    - 10250
+    - 10257
+    - 10259
+    - 30007
+
+- name: Allow tailscale0 on port 6443 from anywhere
+  community.general.ufw:
+    rule: allow
+    interface: tailscale0
+    direction: in
+    port: '6443'
+    proto: tcp
+    comment: Tailscale needs acces to port 6443
+  become: true
+
