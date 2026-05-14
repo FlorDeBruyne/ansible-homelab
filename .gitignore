@@ -9,3 +9,5 @@ id_rsa
 
 # Negeer Ansible retry files
 *.retry
+
+*.vault_password
