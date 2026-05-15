@@ -12,6 +12,9 @@
 
 - hosts: controllers
   tags: kubernetes
+  roles:
+    - role: cilium
+      tags: cilium
   tasks:
     - name: Create kubeadm join token
       command: kubeadm token create --print-join-command
