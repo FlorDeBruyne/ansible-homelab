@@ -1,7 +1,36 @@
 ---
 - hosts: cluster
   roles:
-    - common
-    - tailscale
-    - containerd
-    - kubernetes
+    - role: common
+      tags: common
+    - role: tailscale
+      tags: tailscale
+    - role: containerd
+      tags: containerd
+    - role: kubernetes
+      tags: kubernetes
+
+- hosts: controllers
+  tags: kubernetes
+  tasks:
+    - name: Create kubeadm join token
+      command: kubeadm token create --print-join-command
+      register: join_command
+      become: true
+
+- hosts: workers
+  tags: kubernetes
+  tasks:
+    - name: Join k8s cluster
+      ansible.builtin.shell: |
+        {{ hostvars['hpprodesk01'].join_command.stdout }}
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      become: true
+
+    - name: Label the nodes
+      command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
+      delegate_to: hpprodesk01
+      become: false
+      environment:
+        KUBECONFIG: /home/flor/.kube/config
