@@ -79,3 +79,11 @@
     - 10257
     - 10259
     - 30007
+
+- name: Make sure Kubernetes uses internal IP instead of Tailscale ip
+  ansible.builtin.lineinfile:
+    path: /etc/default/kubelet
+    regexp: '^\s*KUBELET_EXTRA_ARGS\s'
+    line: KUBELET_EXTRA_ARGS=--node-ip={{ ansible_default_ipv4.address }}
+  become: true
+  notify: Restart kubelet service
