@@ -49,3 +49,25 @@
   when: "'--kubelet-insecure-tls' not in metrics_args.stdout"
   environment:
     KUBECONFIG: /home/flor/.kube/config
+
+- name: Add prometheus-community helm repo
+  ansible.builtin.command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  environment:
+    KUBECONFIG: /home/flor/.kube/config
+  changed_when: false
+
+- name: Update helm repos
+  ansible.builtin.command: helm repo update
+  environment:
+    KUBECONFIG: /home/flor/.kube/config
+  changed_when: false
+
+- name: Install kube-prometheus-stack
+  kubernetes.core.helm:
+    name: kube-prometheus-stack
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: monitoring
+    create_namespace: true
+  environment:
+    KUBECONFIG: /home/flor/.kube/config
+  become: false
