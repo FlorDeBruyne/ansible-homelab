@@ -39,12 +39,15 @@ ansible-homelab/
 │       ├── vars.yaml            # Non-secret variables
 │       └── vault.yaml           # Encrypted secrets (Tailscale auth key)
 ├── playbooks/
-│   └── site.yaml                # Main playbook
+│   ├── site.yaml                # Main playbook
+│   └── update.yaml              # Playbook to update & upgrade all nodes
 └── roles/
     ├── common/                  # Updates, swap, kernel modules, UFW
     ├── tailscale/               # Tailscale VPN installation
     ├── containerd/              # Container runtime
-    └── kubernetes/              # kubelet, kubeadm, kubectl
+    ├── kubernetes/              # kubelet, kubeadm, kubectl
+    ├── cilium/                  # Cilium CNI plugin
+    └── cluster_addons/          # Helm, metrics-server, kube-prometheus-stack
 ```
 
 ## Secrets
@@ -62,11 +65,29 @@ To edit the vault file:
 ansible-vault edit group_vars/all/vault.yaml
 ```
 
+## Requirements
+
+External Ansible collections are listed in `requirements.yaml` and must be installed before running any playbook:
+
+```bash
+ansible-galaxy collection install -r requirements.yaml
+```
+
+| Collection | Used by |
+|---|---|
+| `artis3n.tailscale` | `tailscale` role |
+| `kubernetes.core` | `cluster_addons` role |
+
 ## Usage
 
 ### Configure all nodes
 ```bash
 ansible-playbook -i inventory.yaml playbooks/site.yaml
+```
+
+### Update & upgrade all nodes
+```bash
+ansible-playbook -i inventory.yaml playbooks/update.yaml
 ```
 
 ### Only specific nodes
@@ -109,6 +130,17 @@ Installs and configures containerd as the container runtime:
 Installs Kubernetes packages:
 - Install `kubelet`, `kubeadm`, `kubectl`
 - Hold packages to prevent automatic upgrades
+
+### cilium
+Installs the Cilium CNI plugin on the control plane node:
+- Downloads the Cilium CLI from the official GitHub releases
+- Installs Cilium into the cluster if not already present
+
+### cluster_addons
+Installs additional cluster tooling on the control plane node:
+- Install Helm
+- Deploy metrics-server (with `--kubelet-insecure-tls` patch)
+- Deploy kube-prometheus-stack (Prometheus + Grafana) via Helm in the `monitoring` namespace
 
 ## Inventory
 
