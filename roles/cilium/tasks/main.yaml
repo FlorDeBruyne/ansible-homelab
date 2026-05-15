@@ -5,10 +5,6 @@
     return_content: true
   register: cilium_cli_version
 
-- name: Debug cilium version response
-  ansible.builtin.debug:
-    var: cilium_cli_version
-
 - name: Unarchive the cilium install
   ansible.builtin.unarchive:
     src: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version.content | trim }}/cilium-linux-amd64.tar.gz"

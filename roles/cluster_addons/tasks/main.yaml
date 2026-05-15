@@ -17,57 +17,8 @@
   become: true
   when: helm_version.rc != 0
 
-- name: Download metrics-server manifest to the cluster.
-  ansible.builtin.get_url:
-    url: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-    dest: ~/metrics-server.yaml
-    mode: '0664'
-
-- name: Apply metrics-server manifest to the cluster
-  ansible.builtin.command: kubectl apply -f ~/metrics-server.yaml
-  environment:
-    KUBECONFIG: /home/flor/.kube/config
-  register: metrics_apply
-  changed_when: "'configured' in metrics_apply.stdout or 'created' in metrics_apply.stdout"
-
-- name: Check if metrics-server patch is already applied
-  ansible.builtin.command: >
-    kubectl get deployment metrics-server
-    -n kube-system
-    -o jsonpath='{.spec.template.spec.containers[0].args}'
-  register: metrics_args
-  changed_when: false
-  environment:
-    KUBECONFIG: /home/flor/.kube/config
-
-- name: Patch metrics-server to allow insecure TLS
-  ansible.builtin.command: >
-    kubectl patch deployment metrics-server
-    -n kube-system
-    --type='json'
-    -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
-  when: "'--kubelet-insecure-tls' not in metrics_args.stdout"
-  environment:
-    KUBECONFIG: /home/flor/.kube/config
-
-- name: Add prometheus-community helm repo
-  ansible.builtin.command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-  environment:
-    KUBECONFIG: /home/flor/.kube/config
-  changed_when: false
-
 - name: Update helm repos
   ansible.builtin.command: helm repo update
   environment:
     KUBECONFIG: /home/flor/.kube/config
   changed_when: false
-
-- name: Install kube-prometheus-stack
-  kubernetes.core.helm:
-    name: kube-prometheus-stack
-    chart_ref: prometheus-community/kube-prometheus-stack
-    release_namespace: monitoring
-    create_namespace: true
-  environment:
-    KUBECONFIG: /home/flor/.kube/config
-  become: false
