@@ -17,7 +17,7 @@
   become: true
 
 - name: Add Docker-repository using key from URL
-  deb822_repository:
+  ansible.builtin.deb822_repository:
     name: docker
     types: deb
     uris: https://download.docker.com/linux/ubuntu
