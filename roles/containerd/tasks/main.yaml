@@ -1,0 +1,67 @@
+---
+- name: Install dependencies
+  ansible.builtin.apt:
+    update_cache: true
+    name: "{{ item }}"
+  become: true
+  loop:
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    mode: '0775'
+  become: true
+
+- name: Add Docker-repository using key from URL
+  deb822_repository:
+    name: docker
+    types: deb
+    uris: https://download.docker.com/linux/ubuntu
+    suites: '{{ ansible_distribution_release }}'
+    components: stable
+    architectures: '{{ ansible_architecture | replace("x86_64", "amd64") }}'
+    signed_by: https://download.docker.com/linux/ubuntu/gpg
+  become: true
+
+- name: Update apt cache after adding repository
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+
+- name: Install containerd.io repository
+  ansible.builtin.apt:
+    name: containerd.io
+    state: present
+  become: true
+
+- name: Make sure that the containerd configuration dir exists
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Generate standard containerd configuration
+  ansible.builtin.shell: |
+    containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+  become: true
+
+- name: Set SystemdCgroup to true for containerd
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^\s*SystemdCgroup\s*=\s*false'
+    line: '            SystemdCgroup = true'
+  notify: Restart containerd
+  become: true
+
+- name: Enable containerd systemd service
+  ansible.builtin.systemd_service:
+    name: containerd
+    enabled: true
+  become: true
