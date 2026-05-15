@@ -1,0 +1,57 @@
+---
+- name: Install k8s dependencies
+  ansible.builtin.apt:
+    update_cache: true
+    name: '{{ item }}'
+  loop:
+    - apt-transport-https
+    - gpg
+  become: true
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    mode: '0775'
+  become: true
+
+- name: Add Kubernetes apt repository
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: deb
+    uris: https://pkgs.k8s.io/core:/stable:/v1.32/deb/
+    suites: /
+    components: ""
+    architectures: '{{ ansible_architecture | replace("x86_64", "amd64") }}'
+    signed_by: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
+  become: true
+
+- name: Update apt cache after adding repository
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+
+- name: Install kubelet, kubeadm, kubectl
+  ansible.builtin.apt:
+    name: '{{ item }}'
+    state: present
+  become: true
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Hold the packages
+  ansible.builtin.dpkg_selections:
+    name: '{{ item }}'
+    selection: hold
+  become: true
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Enable kubelet service
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: true
+  become: true
