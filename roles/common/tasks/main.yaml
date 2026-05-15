@@ -1,3 +1,11 @@
+- name: Allow the flor user to sudo all commands
+  community.general.sudoers:
+    name: allow-sudo
+    state: present
+    user: flor
+    commands: ALL
+  become: true
+
 - name: Update & upgrade packages
   ansible.builtin.apt:
     update_cache: true
