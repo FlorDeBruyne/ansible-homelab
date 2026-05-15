@@ -11,15 +11,17 @@
       tags: kubernetes
 
 - hosts: controllers
-  tags: kubernetes
   roles:
     - role: cilium
       tags: cilium
+    - role: cluster_addons
+      tags: cluster_addons
   tasks:
     - name: Create kubeadm join token
       command: kubeadm token create --print-join-command
       register: join_command
       become: true
+      tags: kubernetes
 
 - hosts: workers
   tags: kubernetes
@@ -30,6 +32,7 @@
       args:
         creates: /etc/kubernetes/kubelet.conf
       become: true
+      tags: kubernetes
 
     - name: Label the nodes
       command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
@@ -37,3 +40,4 @@
       become: false
       environment:
         KUBECONFIG: /home/flor/.kube/config
+      tags: kubernetes

@@ -2,3 +2,5 @@
 collections:
   - name: artis3n.tailscale
     type: galaxy
+  - name: kubernetes.core
+    type: galaxy
