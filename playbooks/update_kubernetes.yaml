@@ -1,0 +1,145 @@
+---
+- hosts: controllers
+  tasks:
+    - name: Check current kubernetes version
+      ansible.builtin.command: kubeadm version -o short
+      register: current_version
+      changed_when: false
+
+    - name: Unhold packages
+      ansible.builtin.dpkg_selections:
+        name: '{{ item }}'
+        selection: install
+      become: true
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Update packages
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+
+    - name: Upgrade kubeadm
+      ansible.builtin.apt:
+        name: "kubeadm={{ target_k8s_version }}"
+        state: present
+        allow_downgrade: true
+        allow_change_held_packages: true
+      become: true
+
+    - name: Upgrade cluster
+      ansible.builtin.command: |
+        kubeadm upgrade apply {{ target_k8s_version }}
+      become: true
+      when: current_version.stdout != target_k8s_version
+
+    - name: Upgrade kubelet en kubectl
+      ansible.builtin.apt:
+        name: "{{ item }}={{ target_k8s_version }}"
+        state: present
+        allow_downgrade: true
+        allow_change_held_packages: true
+      become: true
+      loop:
+        - kubelet
+        - kubectl
+
+    - name: Hold packages
+      ansible.builtin.dpkg_selections:
+        name: '{{ item }}'
+        selection: hold
+      become: true
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Restart kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+      become: true
+
+    - name: Drain worker
+      ansible.builtin.shell: |
+        kubectl drain {{ item }} --ignore-daemonsets --delete-emptydir-data
+      become: true
+      loop:
+        - hpprodesk02
+        - hpprodesk03
+        - hpprodesk04
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+
+- hosts: workers
+  serial: 1
+  tasks:
+    - name: Unhold packages
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: install
+      become: true
+      loop:
+        - kubeadm
+        - kubectl
+        - kubelet
+
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+
+    - name: Upgrade kubeadm package
+      ansible.builtin.apt:
+        name: "kubeadm={{ target_k8s_version }}"
+        state: present
+        allow_downgrade: true
+        allow_change_held_packages: true
+      become: true
+
+    - name: Upgrade node
+      ansible.builtin.command: |
+        kubeadm upgrade node
+      become: true
+
+    - name:  Upgrade kubelet & kubectl package
+      ansible.builtin.apt:
+        name: "{{ item }}={{ target_k8s_version }}"
+        state: present
+        allow_downgrade: true
+        allow_change_held_packages: true
+      become: true
+      loop:
+        - kubelet
+        - kubectl
+
+    - name: Hold packages
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      become: true
+      loop:
+        - kubeadm
+        - kubectl
+        - kubelet
+
+    - name: Restart kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+      become: true
+
+- hosts: controllers
+  tasks:
+    - name: Uncordon nodes
+      ansible.builtin.shell: |
+        kubectl uncordon {{ item }}
+      become: true
+      loop:
+        - hpprodesk02
+        - hpprodesk03
+        - hpprodesk04
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"

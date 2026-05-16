@@ -1,3 +1,4 @@
 tailscale_authkey: "{{ vault_tailscale_authkey }}"
 pod_network_cidr: "10.244.0.0/16"
 kubeconfig: "/home/{{ ansible_user }}/.kube/config"
+target_k8s_version: "{{ k8s_version | default('1.32.0-1.1') }}"

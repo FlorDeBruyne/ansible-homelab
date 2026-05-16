@@ -26,10 +26,11 @@ ansible-homelab/
 ├── group_vars/
 │   └── all/
 │       ├── vars.yaml            # Non-secret variables (kubeconfig path, pod CIDR)
-│       └── vault.yaml           # Encrypted secrets (Tailscale auth key, Grafana password)
+│       └── vault.yaml           # Encrypted secrets (Tailscale auth key)
 ├── playbooks/
 │   ├── site.yaml                # Main playbook
-│   └── update.yaml              # Playbook to update & upgrade all nodes
+│   ├── update.yaml              # Playbook to update & upgrade all nodes
+│   └── update_kubernetes.yaml   # Playbook to upgrade Kubernetes version
 └── roles/
     ├── common/                  # Updates, swap, kernel modules, UFW, kubelet IP fix
     ├── tailscale/               # Tailscale VPN installation
@@ -42,7 +43,6 @@ ansible-homelab/
 
 The following secrets are stored in an Ansible Vault file:
 - Tailscale auth key
-- Grafana admin password
 
 Create a `.vault_password` file in the root of the repo:
 
@@ -86,6 +86,13 @@ ansible-playbook -i inventory.yaml playbooks/site.yaml
 ```bash
 ansible-playbook -i inventory.yaml playbooks/update.yaml
 ```
+
+### Upgrade Kubernetes to a specific version
+```bash
+ansible-playbook -i inventory.yaml playbooks/update_kubernetes.yaml -e "k8s_version=1.33.0-1.1"
+```
+
+> **Note:** If no version is specified, the playbook defaults to `1.32.0-1.1`.
 
 ### Only specific nodes
 ```bash
@@ -137,6 +144,20 @@ Full control plane setup — only runs on the controller node:
 - Set up kubeconfig for the `$USER` user
 - Install Helm
 - Install Cilium CNI plugin
+
+## Kubernetes upgrade
+
+The `update_kubernetes.yaml` playbook upgrades Kubernetes on all nodes in the correct order:
+
+1. Upgrade the controller node
+2. Drain each worker node one by one (`serial: 1`)
+3. Upgrade each worker node
+4. Uncordon each worker node after upgrade
+
+Run with a specific version:
+```bash
+ansible-playbook -i inventory.yaml playbooks/update_kubernetes.yaml -e "k8s_version=1.33.0-1.1"
+```
 
 ## Inventory
 
