@@ -36,7 +36,7 @@ ansible-homelab/
     ├── tailscale/               # Tailscale VPN installation
     ├── containerd/              # Container runtime
     ├── kubernetes/              # kubelet, kubeadm, kubectl
-    └── controller_init/         # kubeadm init, kubeconfig, Helm, Cilium
+    └── controller_init/         # kubeadm init, kubeconfig, Helm, Cilium, Flux CLI
 ```
 
 ## Secrets
@@ -144,6 +144,7 @@ Full control plane setup — only runs on the controller node:
 - Set up kubeconfig for the `$USER` user
 - Install Helm
 - Install Cilium CNI plugin
+- Install Flux CLI (for use with FluxCD bootstrap in the Kubernetes repo)
 
 ## Kubernetes upgrade
 
