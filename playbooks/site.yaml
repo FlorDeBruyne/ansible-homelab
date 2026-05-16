@@ -14,10 +14,6 @@
   roles:
     - role: controller_init
       tags: controller_init
-    - role: cilium
-      tags: cilium
-    - role: cluster_addons
-      tags: cluster_addons
   tasks:
     - name: Create kubeadm join token
       command: kubeadm token create --print-join-command
@@ -34,12 +30,10 @@
       args:
         creates: /etc/kubernetes/kubelet.conf
       become: true
-      tags: kubernetes
 
     - name: Label the nodes
       command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
       delegate_to: hpprodesk01
       become: false
       environment:
-        KUBECONFIG: /home/flor/.kube/config
-      tags: kubernetes
+        KUBECONFIG: "{{ kubeconfig }}"

@@ -28,3 +28,50 @@
     group: "{{ ansible_user }}"
     owner: "{{ ansible_user }}"
   become: true
+
+- name: Get helm install script
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+    dest: /tmp/get_helm.sh
+    mode: '0700'
+  become: true
+
+- name: Check if Helm is installed
+  ansible.builtin.command: helm version
+  ignore_errors: true
+  changed_when: false
+  register: helm_version
+
+- name: Install helm
+  ansible.builtin.command: /tmp/get_helm.sh
+  become: true
+  when: helm_version.rc != 0
+
+- name: Get the cilium cli version
+  ansible.builtin.uri:
+    url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
+    return_content: true
+  register: cilium_cli_version
+
+- name: Unarchive the cilium install
+  ansible.builtin.unarchive:
+    src: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version.content | trim }}/cilium-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+  args:
+    creates: /usr/local/bin/cilium
+  become: true
+
+- name: Check if Cilium is installed
+  ansible.builtin.command: cilium status
+  ignore_errors: true
+  changed_when: false
+  register: cilium_status
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+
+- name: Install Cilium
+  ansible.builtin.command: cilium install
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  become: true
+  when: cilium_status.rc != 0

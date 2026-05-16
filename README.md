@@ -4,28 +4,17 @@ Ansible configuration for automatically setting up a Kubernetes cluster. The pla
 
 ## Prerequisites
 
-### Control node (your MacBook)
+### Control node
 - Ansible installed (`pip install ansible` in a virtualenv)
 - SSH key generated (`ssh-keygen`)
-- SSH key copied to all nodes (`ssh-copy-id flor@<ip>`)
+- SSH key copied to all nodes (`ssh-copy-id $USER@<ip>`)
 - Ansible collections installed (`ansible-galaxy collection install -r requirements.yaml`)
 - Vault password file created (see [Secrets](#secrets))
 
 ### Cluster nodes
 - Ubuntu Server 24.04 installed
-- SSH access with the `flor` user
+- SSH access with the `$USER` user
 - Static IP addresses configured via Netplan
-
-### Important — bootstrapping
-This playbook assumes that `hpprodesk01` is already configured as a Kubernetes control plane via `kubeadm init`. Worker nodes are automatically joined via `kubeadm join`, but the initial control plane setup must be done manually.
-
-Commands for the initial control plane setup:
-```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<ip>
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-```
 
 ## Repository structure
 
@@ -36,23 +25,26 @@ ansible-homelab/
 ├── requirements.yaml            # Ansible Galaxy collections
 ├── group_vars/
 │   └── all/
-│       ├── vars.yaml            # Non-secret variables
-│       └── vault.yaml           # Encrypted secrets (Tailscale auth key)
+│       ├── vars.yaml            # Non-secret variables (kubeconfig path, pod CIDR)
+│       └── vault.yaml           # Encrypted secrets (Tailscale auth key, Grafana password)
 ├── playbooks/
 │   ├── site.yaml                # Main playbook
 │   └── update.yaml              # Playbook to update & upgrade all nodes
 └── roles/
-    ├── common/                  # Updates, swap, kernel modules, UFW
+    ├── common/                  # Updates, swap, kernel modules, UFW, kubelet IP fix
     ├── tailscale/               # Tailscale VPN installation
     ├── containerd/              # Container runtime
     ├── kubernetes/              # kubelet, kubeadm, kubectl
-    ├── cilium/                  # Cilium CNI plugin
-    └── cluster_addons/          # Helm, metrics-server, kube-prometheus-stack
+    └── controller_init/         # kubeadm init, kubeconfig, Helm, Cilium
 ```
 
 ## Secrets
 
-The Tailscale auth key is stored in an Ansible Vault file. Create a `.vault_password` file in the root of the repo:
+The following secrets are stored in an Ansible Vault file:
+- Tailscale auth key
+- Grafana admin password
+
+Create a `.vault_password` file in the root of the repo:
 
 ```bash
 echo "your_vault_password" > .vault_password
@@ -63,6 +55,11 @@ This file is listed in `.gitignore` and is never committed. The vault file itsel
 To edit the vault file:
 ```bash
 ansible-vault edit group_vars/all/vault.yaml
+```
+
+The vault file should contain:
+```yaml
+vault_tailscale_authkey: "tskey-auth-xxxxx"
 ```
 
 ## Requirements
@@ -76,7 +73,7 @@ ansible-galaxy collection install -r requirements.yaml
 | Collection | Used by |
 |---|---|
 | `artis3n.tailscale` | `tailscale` role |
-| `kubernetes.core` | `cluster_addons` role |
+| `kubernetes.core` | `controller_init` role |
 
 ## Usage
 
@@ -97,7 +94,7 @@ ansible-playbook -i inventory.yaml playbooks/site.yaml --limit hpprodesk03,hppro
 
 ### Only a specific role
 ```bash
-ansible-playbook -i inventory.yaml playbooks/site.yaml --tags kubernetes
+ansible-playbook -i inventory.yaml playbooks/site.yaml --tags controller_init
 ```
 
 ### Simulate without changes (check mode)
@@ -112,10 +109,12 @@ ansible-playbook -i inventory.yaml playbooks/site.yaml --check
 ### common
 Base configuration for every node:
 - `apt update` and `apt upgrade`
+- Sudo access for the `$USER` user
 - Disable swap (required by Kubernetes)
 - Load kernel modules: `overlay` and `br_netfilter`
 - Sysctl settings for Kubernetes networking
 - UFW firewall rules for Kubernetes ports
+- Configure kubelet to use the LAN IP instead of the Tailscale IP
 
 ### tailscale
 Installs Tailscale VPN via the `artis3n.tailscale` collection. Uses the auth key from the vault.
@@ -130,17 +129,14 @@ Installs and configures containerd as the container runtime:
 Installs Kubernetes packages:
 - Install `kubelet`, `kubeadm`, `kubectl`
 - Hold packages to prevent automatic upgrades
+- Enable kubelet service
 
-### cilium
-Installs the Cilium CNI plugin on the control plane node:
-- Downloads the Cilium CLI from the official GitHub releases
-- Installs Cilium into the cluster if not already present
-
-### cluster_addons
-Installs additional cluster tooling on the control plane node:
+### controller_init
+Full control plane setup — only runs on the controller node:
+- Run `kubeadm init` (idempotent — skipped if already initialized)
+- Set up kubeconfig for the `$USER` user
 - Install Helm
-- Deploy metrics-server (with `--kubelet-insecure-tls` patch)
-- Deploy kube-prometheus-stack (Prometheus + Grafana) via Helm in the `monitoring` namespace
+- Install Cilium CNI plugin
 
 ## Inventory
 

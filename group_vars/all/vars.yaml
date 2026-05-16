@@ -1,2 +1,3 @@
 tailscale_authkey: "{{ vault_tailscale_authkey }}"
 pod_network_cidr: "10.244.0.0/16"
+kubeconfig: "/home/{{ ansible_user }}/.kube/config"
