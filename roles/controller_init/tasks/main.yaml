@@ -1,0 +1,30 @@
+---
+- name: Ensure Kubelet is enabled and started
+  ansible.builtin.systemd:
+    name: kubelet
+    state: started
+    enabled: true
+  become: true
+
+- name: Initialize controller node
+  ansible.builtin.shell: |
+    kubeadm init --pod-network-cidr={{ pod_network_cidr }} --apiserver-advertise-address={{ ansible_default_ipv4.address }}
+  args:
+    creates: /etc/kubernetes/admin.conf
+  become: true
+
+- name: Create .kube directory
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    mode: '0755'
+
+- name: Copy admin config to remote user and set the owner correctly
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    remote_src: true
+    mode: '0600'
+    group: "{{ ansible_user }}"
+    owner: "{{ ansible_user }}"
+  become: true

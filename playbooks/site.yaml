@@ -12,6 +12,8 @@
 
 - hosts: controllers
   roles:
+    - role: controller_init
+      tags: controller_init
     - role: cilium
       tags: cilium
     - role: cluster_addons
