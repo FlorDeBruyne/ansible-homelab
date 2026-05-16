@@ -75,3 +75,22 @@
     KUBECONFIG: "{{ kubeconfig }}"
   become: true
   when: cilium_status.rc != 0
+
+- name: Check if flux is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/flux
+  register: flux_binary
+
+- name: Get the fluxcd version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/fluxcd/flux2/releases/latest
+    return_content: true
+  register: flux_version
+  when: not flux_binary.stat.exists
+
+- name: Unarchive the fluxcd install
+  ansible.builtin.unarchive:
+    src: "https://github.com/fluxcd/flux2/releases/download/{{ (flux_version.content | from_json).tag_name }}/flux_{{ (flux_version.content | from_json).tag_name | replace('v', '') }}_linux_amd64.tar.gz"
+    dest: /usr/local/bin
+  when: not flux_binary.stat.exists
+  become: true
