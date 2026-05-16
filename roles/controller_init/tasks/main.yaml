@@ -92,5 +92,6 @@
   ansible.builtin.unarchive:
     src: "https://github.com/fluxcd/flux2/releases/download/{{ (flux_version.content | from_json).tag_name }}/flux_{{ (flux_version.content | from_json).tag_name | replace('v', '') }}_linux_amd64.tar.gz"
     dest: /usr/local/bin
+    remote_src: true
   when: not flux_binary.stat.exists
   become: true
