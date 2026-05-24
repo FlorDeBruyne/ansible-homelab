@@ -36,7 +36,8 @@ ansible-homelab/
     ├── tailscale/               # Tailscale VPN installation
     ├── containerd/              # Container runtime
     ├── kubernetes/              # kubelet, kubeadm, kubectl
-    └── controller_init/         # kubeadm init, kubeconfig, Helm, Cilium, Flux CLI
+    ├── controller_init/         # kubeadm init, kubeconfig, Helm, Cilium, Flux CLI
+    └── storage/                 # 1TB disk partitioning and mounting for Longhorn
 ```
 
 ## Secrets
@@ -74,6 +75,8 @@ ansible-galaxy collection install -r requirements.yaml
 |---|---|
 | `artis3n.tailscale` | `tailscale` role |
 | `kubernetes.core` | `controller_init` role |
+| `community.general` | `storage` role |
+| `ansible.posix` | `storage` role |
 
 ## Usage
 
@@ -145,6 +148,12 @@ Full control plane setup — only runs on the controller node:
 - Install Helm
 - Install Cilium CNI plugin
 - Install Flux CLI (for use with FluxCD bootstrap in the Kubernetes repo)
+
+### storage
+Prepares the 1TB disk (`/dev/sda`) on all nodes for use with Longhorn:
+- Removes existing partitions (idempotent — skipped if already mounted)
+- Creates a new primary ext4 partition
+- Mounts the partition at `/mnt/longhorn`
 
 ## Kubernetes upgrade
 
