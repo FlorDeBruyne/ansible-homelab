@@ -1,0 +1,48 @@
+---
+- name: Check if /dev/sda1 is mounted
+  ansible.builtin.command: mountpoint -q /mnt/longhorn
+  register: mount_status
+  failed_when: false
+  changed_when: false
+
+- name: Read device information
+  community.general.parted: device=/dev/sda unit=MiB
+  register: sda_info
+  become: true
+
+- name: Setup storage if not already mounted
+  when: mount_status.rc != 0
+  block:
+    - name: Remove all partitions on sda
+      community.general.parted:
+        device: /dev/sda
+        number: '{{ item.num }}'
+        state: absent
+      loop: '{{ sda_info.partitions }}'
+
+    - name: Create a new primary partition
+      community.general.parted:
+        device: /dev/sda
+        number: 1
+        state: present
+        fs_type: ext4
+
+    - name: Create a ext4 filesystem on /dev/sda1
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/sda1
+        force: true
+
+    - name: Create mount point for drive
+      ansible.builtin.file:
+        path: /mnt/longhorn
+        state: directory
+        mode: '0755'
+
+    - name: Mount the drive on /mnt/longhorn
+      ansible.posix.mount:
+        path: /mnt/longhorn
+        src: /dev/sda1
+        fstype: ext4
+        state: mounted
+  become: true

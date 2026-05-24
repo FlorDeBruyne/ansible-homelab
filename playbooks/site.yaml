@@ -9,6 +9,8 @@
       tags: containerd
     - role: kubernetes
       tags: kubernetes
+    - role: storage
+      tags: storage
 
 - hosts: controllers
   roles:
