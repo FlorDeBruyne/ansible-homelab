@@ -70,7 +70,7 @@
     KUBECONFIG: "{{ kubeconfig }}"
 
 - name: Install Cilium
-  ansible.builtin.command: cilium install
+  ansible.builtin.command: "cilium install --set ipam.operator.clusterPoolIPv4PodCIDRList={{ pod_network_cidr}}"
   environment:
     KUBECONFIG: "{{ kubeconfig }}"
   become: true
