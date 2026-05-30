@@ -65,6 +65,12 @@
     state: enabled
   become: true
 
+- name: allow routed ufw
+  community.general.ufw:
+    default: allow
+    direction: "routed"
+  become: true
+
 - name: Allow tcp for ports from anywhere
   community.general.ufw:
     rule: allow
