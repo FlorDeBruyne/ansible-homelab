@@ -12,10 +12,20 @@
     upgrade: safe
   become: true
 
-- name: Install neofetch
+- name: Install neofetch & nfs-common
   ansible.builtin.apt:
-    name: neofetch
+    name: "{{ item }}"
     state: present
+  become: true
+  loop:
+    - neofetch
+    - nfs-common
+
+- name: Disable and stop multipathd
+  ansible.builtin.systemd_service:
+    name: multipathd
+    state: stopped
+    enabled: false
   become: true
 
 - name: Disable swap for current session
